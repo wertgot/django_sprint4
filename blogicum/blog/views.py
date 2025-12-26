@@ -1,4 +1,3 @@
-from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 
 from blog.models import Post, Category
@@ -6,9 +5,7 @@ from django.contrib.auth import get_user_model
 from django.views.generic import DetailView, CreateView
 from django.core.paginator import Paginator
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Count
+from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
@@ -120,51 +117,6 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         # После успешного редактирования возвращаем на профиль
         return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Редактирование профиля'
-        return context
-
-
-# Альтернативный вариант на функциях (если предпочитаете):
-
-@login_required
-def edit_profile(request):
-    """Редактирование профиля пользователя (функциональный вариант)."""
-    if request.method == 'POST':
-        form = UserUpdateForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            return redirect('blog:profile', username=request.user.username)
-    else:
-        form = UserUpdateForm(instance=request.user)
-
-    return render(request, 'blog/user.html', {'form': form})
-
-
-def profile(request, username):
-    """Отображение профиля пользователя (функциональный вариант)."""
-    user_profile = get_object_or_404(User, username=username)
-
-    # Получаем посты пользователя
-    posts = Post.objects.filter(
-        author=user_profile,
-        is_published=True,
-        category__is_published=True,
-        pub_date__lte=timezone.now()
-    ).select_related('category', 'location', 'author')
-
-    # Пагинация
-    paginator = Paginator(posts, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'profile': user_profile,
-        'page_obj': page_obj,
-    }
-
-    return render(request, 'blog/profile.html', context)
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание новой публикации."""
