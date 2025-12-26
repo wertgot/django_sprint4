@@ -1,16 +1,17 @@
 from django.utils import timezone
 
-from blog.models import Post, Category
+from blog.models import Post, Category, Comment
 from django.contrib.auth import get_user_model
-from django.views.generic import DetailView, CreateView, ListView
+from django.views.generic import DetailView, CreateView, ListView, UpdateView, DeleteView
 from django.core.paginator import Paginator
-
-from django.shortcuts import get_object_or_404, render
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic.edit import UpdateView
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
+from django.http import HttpResponseForbidden
+from django.contrib import messages
 
-from .forms import UserUpdateForm, PostForm
+from .forms import UserUpdateForm, PostForm, CommentForm
 
 User = get_user_model()
 
@@ -29,24 +30,18 @@ class PostsListView(ListView):
     )
 
 
-def post_detail(request, post_id):
-    template = "blog/detail.html"
+class PostyDetailView(DetailView):
+    model = Post
+    template_name = 'blog/detail.html'
+    pk_url_kwarg = 'post_id'
 
-    post = get_object_or_404(
-        Post.objects.select_related(
-            'author',
-            'category',
-            'location'
-        ),
-        id=post_id,
-
-        pub_date__lte=timezone.now(),
-        is_published=True,
-        category__is_published=True
-    )
-
-    context = {'post': post}
-    return render(request, template, context)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = CommentForm()
+        context['comments'] = (
+            self.object.comments.select_related('author')
+        )
+        return context
 
 
 def category_posts(request, category_slug):
@@ -151,3 +146,70 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Создание новой публикации'
         return context
+
+
+class EditMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        """Проверяем, что пользователь является автором записи"""
+        post = self.get_object()
+        return self.request.user == post.author
+
+    def handle_no_permission(self):
+        return HttpResponseForbidden("Вы не можете редактировать эту запись")
+
+
+class PostUpdateView(EditMixin, UpdateView):
+    model = Post
+    form_class = PostForm
+
+class PostDeleteView(EditMixin, DeleteView):
+    model = Post
+    success_url = reverse_lazy('blog:index')
+
+@login_required
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    form = CommentForm(request.POST)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+
+    return redirect('blog:post_detail', post_id=post_id)
+
+class CommentUpdateView(LoginRequiredMixin, UpdateView):
+    """Редактирование комментария."""
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def dispatch(self, request, *args, **kwargs):
+        """Проверяем, что пользователь - автор комментария."""
+        comment = self.get_object()
+        if comment.author != request.user:
+            raise HttpResponseForbidden("Вы не являетесь автором этого комментария")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Комментарий обновлен')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        # Возвращаем на страницу поста
+        return reverse_lazy(
+            'blog:post_detail',
+            kwargs={'post_id': self.object.post.id}
+        )
+
+class CommentDeleteView(EditMixin, DeleteView):
+    """Удаление комментария."""
+    model = Comment
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def get_success_url(self):
+        """После удаления возвращаем на страницу поста."""
+        post_id = self.object.post.id
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': post_id})

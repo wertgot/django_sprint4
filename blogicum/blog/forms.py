@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserChangeForm
 
 from django import forms
-from .models import Post, Category, Location
+from .models import Post, Category, Location, Comment
 
 User = get_user_model()
 
@@ -56,3 +56,8 @@ class PostForm(forms.ModelForm):
         # Устанавливаем формат даты для виджета
         if self.instance.pk and self.instance.pub_date:
             self.initial['pub_date'] = self.instance.pub_date.strftime('%Y-%m-%dT%H:%M')
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ('text',)
