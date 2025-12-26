@@ -2,7 +2,20 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 
 from blog.models import Post, Category
+from django.contrib.auth import get_user_model
+from django.views.generic import DetailView, CreateView
+from django.core.paginator import Paginator
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render, redirect
+from django.db.models import Count
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.edit import UpdateView
+from django.urls import reverse_lazy
+
+from .forms import UserUpdateForm, PostForm
+
+User = get_user_model()
 
 def index(request):
     template = "blog/index.html"
@@ -65,3 +78,113 @@ def category_posts(request, category_slug):
         'category': category
     }
     return render(request, template, context)
+
+class ProfileView(DetailView):
+    """Отображение профиля пользователя с его публикациями."""
+    model = User
+    template_name = 'blog/profile.html'
+    context_object_name = 'profile'
+    slug_field = 'username'
+    slug_url_kwarg = 'username'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Получаем посты пользователя
+        posts = Post.objects.filter(
+            author=self.object,
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now()
+        ).select_related('category', 'location', 'author')
+
+        # Пагинация
+        paginator = Paginator(posts, 10)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context['page_obj'] = page_obj
+        return context
+
+
+class ProfileUpdateView(LoginRequiredMixin, UpdateView):
+    """Редактирование профиля пользователя."""
+    model = User
+    form_class = UserUpdateForm
+    template_name = 'blog/user.html'
+
+    def get_object(self, queryset=None):
+        # Возвращаем текущего пользователя
+        return self.request.user
+
+    def get_success_url(self):
+        # После успешного редактирования возвращаем на профиль
+        return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Редактирование профиля'
+        return context
+
+
+# Альтернативный вариант на функциях (если предпочитаете):
+
+@login_required
+def edit_profile(request):
+    """Редактирование профиля пользователя (функциональный вариант)."""
+    if request.method == 'POST':
+        form = UserUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('blog:profile', username=request.user.username)
+    else:
+        form = UserUpdateForm(instance=request.user)
+
+    return render(request, 'blog/user.html', {'form': form})
+
+
+def profile(request, username):
+    """Отображение профиля пользователя (функциональный вариант)."""
+    user_profile = get_object_or_404(User, username=username)
+
+    # Получаем посты пользователя
+    posts = Post.objects.filter(
+        author=user_profile,
+        is_published=True,
+        category__is_published=True,
+        pub_date__lte=timezone.now()
+    ).select_related('category', 'location', 'author')
+
+    # Пагинация
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'profile': user_profile,
+        'page_obj': page_obj,
+    }
+
+    return render(request, 'blog/profile.html', context)
+
+class PostCreateView(LoginRequiredMixin, CreateView):
+    """Создание новой публикации."""
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/detailw.html'
+    success_url = reverse_lazy('blog:index')  # или другая страница
+
+    def form_valid(self, form):
+        """Добавляем автора перед сохранением."""
+        form.instance.author = self.request.user
+
+        # Если дата публикации не указана, ставим текущую
+        if not form.instance.pub_date:
+            form.instance.pub_date = timezone.now()
+
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        """Добавляем дополнительные данные в контекст."""
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Создание новой публикации'
+        return context

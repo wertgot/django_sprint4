@@ -1,7 +1,19 @@
+# blog/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 
-from core.models import PublishedModel
+
+User = get_user_model()
+
+class PublishedModel(models.Model):
+    is_published = models.BooleanField(
+        'Опубликовано',
+        default=True,
+        help_text='Снимите галочку, чтобы скрыть публикацию.')
+    created_at = models.DateTimeField('Добавлено', auto_now_add=True)
+
+    class Meta:
+        abstract = True
 
 
 class Category(PublishedModel):
@@ -34,9 +46,6 @@ class Location(PublishedModel):
 
     def __str__(self):
         return self.name
-
-
-User = get_user_model()
 
 
 class Post(PublishedModel):
