@@ -2,7 +2,7 @@ from django.utils import timezone
 
 from blog.models import Post, Category
 from django.contrib.auth import get_user_model
-from django.views.generic import DetailView, CreateView
+from django.views.generic import DetailView, CreateView, ListView
 from django.core.paginator import Paginator
 
 from django.shortcuts import get_object_or_404, render
@@ -14,9 +14,11 @@ from .forms import UserUpdateForm, PostForm
 
 User = get_user_model()
 
-def index(request):
-    template = "blog/index.html"
-    post_list = Post.objects.select_related(
+class PostsListView(ListView):
+    model = Post
+    template_name = 'blog/index.html'
+    paginate_by = 10
+    queryset = Post.objects.select_related(
         'author',
         'category',
         'location'
@@ -24,12 +26,7 @@ def index(request):
         is_published=True,
         category__is_published=True,
         pub_date__lte=timezone.now()
-    )[:5]
-
-    context = {
-        "post_list": post_list,
-    }
-    return render(request, template, context)
+    )
 
 
 def post_detail(request, post_id):
