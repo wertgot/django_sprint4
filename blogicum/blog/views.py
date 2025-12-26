@@ -86,13 +86,18 @@ class ProfileView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Получаем посты пользователя
-        posts = Post.objects.filter(
-            author=self.object,
-            is_published=True,
-            category__is_published=True,
-            pub_date__lte=timezone.now()
-        ).select_related('category', 'location', 'author')
+        current_user = self.request.user
+        if current_user.is_authenticated and current_user == self.object:
+            posts = Post.objects.filter(
+                author=self.object,
+            ).select_related('category', 'location', 'author')
+        else:
+            posts = Post.objects.filter(
+                author=self.object,
+                is_published=True,
+                category__is_published=True,
+                pub_date__lte=timezone.now()
+            ).select_related('category', 'location', 'author')
 
         # Пагинация
         paginator = Paginator(posts, 10)

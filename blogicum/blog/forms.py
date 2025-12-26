@@ -26,7 +26,13 @@ class PostForm(forms.ModelForm):
         model = Post
         fields = ('title', 'text', 'pub_date', 'category', 'location', 'is_published')
         widgets = {
-            'pub_date': forms.DateInput(attrs={'type': 'date'}),
+            'pub_date': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control',
+                },
+                format='%Y-%m-%dT%H:%M'  # Формат для HTML5
+            ),
             'text': forms.Textarea(attrs={'rows': 10}),
         }
         help_texts = {
