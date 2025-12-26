@@ -58,7 +58,7 @@ def category_posts(request, category_slug):
         is_published=True
     )
 
-    post_list = category.posts.select_related(
+    page_obj = category.posts.select_related(
         'author',
         'category',
         'location'
@@ -67,11 +67,14 @@ def category_posts(request, category_slug):
         pub_date__lte=timezone.now()
     )
 
-    context = {
-        'post_list': post_list,
-        'category': category
-    }
+    paginator = Paginator(page_obj, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {'page_obj': page_obj}
     return render(request, template, context)
+
+
 
 class ProfileView(DetailView):
     """Отображение профиля пользователя с его публикациями."""
