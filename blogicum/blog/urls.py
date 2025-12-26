@@ -15,4 +15,5 @@ urlpatterns = [
          views.ProfileUpdateView.as_view(),
          name="edit_profile"
     ),
+    path('posts/create/', views.PostCreateView.as_view(), name="create_post"),
 ]

@@ -122,8 +122,14 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание новой публикации."""
     model = Post
     form_class = PostForm
-    template_name = 'blog/detailw.html'
-    success_url = reverse_lazy('blog:index')  # или другая страница
+    template_name = 'blog/create.html'
+
+    def get_success_url(self):
+        """После создания поста переходим на профиль пользователя."""
+        return reverse_lazy(
+            'blog:profile',
+            kwargs={'username': self.request.user.username}
+        )
 
     def form_valid(self, form):
         """Добавляем автора перед сохранением."""
