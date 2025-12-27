@@ -170,6 +170,10 @@ class PostDeleteView(EditMixin, DeleteView):
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
     success_url = reverse_lazy('blog:index')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = PostForm(instance=self.object)
+        return context
 
 @login_required
 def add_comment(request, post_id):
