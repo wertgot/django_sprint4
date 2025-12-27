@@ -1,6 +1,4 @@
 from django.utils import timezone
-
-from blog.models import Post, Category, Comment
 from django.contrib.auth import get_user_model
 from django.views.generic import DetailView, CreateView, ListView, UpdateView, DeleteView
 from django.core.paginator import Paginator
@@ -8,9 +6,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
-from django.http import HttpResponseForbidden
 from django.contrib import messages
+from django.http import Http404
+from django.core.exceptions import PermissionDenied
 
+from blog.models import Post, Category, Comment
 from .forms import UserUpdateForm, PostForm, CommentForm
 
 User = get_user_model()
@@ -30,10 +30,26 @@ class PostsListView(ListView):
     )
 
 
-class PostyDetailView(DetailView):
+class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
     pk_url_kwarg = 'post_id'
+
+    def get_object(self, queryset=None):
+        """Получаем пост с проверкой видимости."""
+        post = super().get_object(queryset)
+
+        # Автор видит ВСЕ свои посты (включая снятые с публикации)
+        if self.request.user.is_authenticated and self.request.user == post.author:
+            return post
+
+        if (post.is_published and
+            post.category.is_published and
+            post.pub_date <= timezone.now()):
+            return post
+
+        # Если условия не выполнены - пост не найден (404)
+        raise Http404("Пост не найден")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -155,7 +171,7 @@ class EditMixin(LoginRequiredMixin, UserPassesTestMixin):
         return self.request.user == post.author
 
     def handle_no_permission(self):
-        return HttpResponseForbidden("Вы не можете редактировать эту запись")
+        return redirect('blog:post_detail', post_id=self.kwargs.get('post_id'))
 
 
 class PostUpdateView(EditMixin, UpdateView):
@@ -198,7 +214,7 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
         """Проверяем, что пользователь - автор комментария."""
         comment = self.get_object()
         if comment.author != request.user:
-            raise HttpResponseForbidden("Вы не являетесь автором этого комментария")
+            raise PermissionDenied("Вы не являетесь автором этого комментария")
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
