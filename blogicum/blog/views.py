@@ -161,9 +161,14 @@ class EditMixin(LoginRequiredMixin, UserPassesTestMixin):
 class PostUpdateView(EditMixin, UpdateView):
     model = Post
     form_class = PostForm
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'post_id'
+    success_url = reverse_lazy('blog:index')
 
 class PostDeleteView(EditMixin, DeleteView):
     model = Post
+    template_name = 'blog/create.html'
+    pk_url_kwarg = 'post_id'
     success_url = reverse_lazy('blog:index')
 
 @login_required

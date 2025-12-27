@@ -79,6 +79,10 @@ class Post(PublishedModel):
         related_name='posts',
         verbose_name='Категория'
     )
+    image = models.ImageField(
+        'Фото', upload_to='posts_images', blank=True
+    )
+
     @property
     def comment_count(self):
         """Возвращает количество комментариев к посту."""
