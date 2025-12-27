@@ -19,6 +19,7 @@ class UserUpdateForm(UserChangeForm):
         # Убираем поле пароля из формы
         self.fields.pop('password', None)
 
+
 class PostForm(forms.ModelForm):
     """Форма для создания и редактирования поста."""
 
@@ -36,7 +37,9 @@ class PostForm(forms.ModelForm):
             'text': forms.Textarea(attrs={'rows': 10}),
         }
         help_texts = {
-            'pub_date': 'Если установить дату в будущем — можно делать отложенные публикации.',
+            'pub_date':
+                '''Если установить дату в будущем
+                — можно делать отложенные публикации.''',
             'is_published': 'Снимите галочку, чтобы скрыть публикацию.',
         }
 
@@ -55,7 +58,9 @@ class PostForm(forms.ModelForm):
 
         # Устанавливаем формат даты для виджета
         if self.instance.pk and self.instance.pub_date:
-            self.initial['pub_date'] = self.instance.pub_date.strftime('%Y-%m-%dT%H:%M')
+            self.initial['pub_date'] = self.instance.pub_date.strftime(
+                '%Y-%m-%dT%H:%M')
+
 
 class CommentForm(forms.ModelForm):
     class Meta:

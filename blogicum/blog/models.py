@@ -1,10 +1,10 @@
 # blog/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 
 User = get_user_model()
+
 
 class PublishedModel(models.Model):
     is_published = models.BooleanField(
@@ -95,6 +95,7 @@ class Post(PublishedModel):
 
     def __str__(self):
         return self.title
+
 
 class Comment(models.Model):
     text = models.TextField('Комментарий')

@@ -1,6 +1,8 @@
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from django.views.generic import DetailView, CreateView, ListView, UpdateView, DeleteView
+from django.views.generic import (
+    DetailView, CreateView, ListView, UpdateView, DeleteView
+)
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
@@ -14,6 +16,7 @@ from blog.models import Post, Category, Comment
 from .forms import UserUpdateForm, PostForm, CommentForm
 
 User = get_user_model()
+
 
 class PostsListView(ListView):
     model = Post
@@ -40,12 +43,13 @@ class PostDetailView(DetailView):
         post = super().get_object(queryset)
 
         # Автор видит ВСЕ свои посты (включая снятые с публикации)
-        if self.request.user.is_authenticated and self.request.user == post.author:
+        if (self.request.user.is_authenticated
+                and self.request.user == post.author):
             return post
 
-        if (post.is_published and
-            post.category.is_published and
-            post.pub_date <= timezone.now()):
+        if (post.is_published
+                and post.category.is_published
+                and post.pub_date <= timezone.now()):
             return post
 
         # Если условия не выполнены - пост не найден (404)
@@ -86,9 +90,9 @@ def category_posts(request, category_slug):
     return render(request, template, context)
 
 
-
 class ProfileView(DetailView):
     """Отображение профиля пользователя с его публикациями."""
+
     model = User
     template_name = 'blog/profile.html'
     context_object_name = 'profile'
@@ -121,6 +125,7 @@ class ProfileView(DetailView):
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     """Редактирование профиля пользователя."""
+
     model = User
     form_class = UserUpdateForm
     template_name = 'blog/user.html'
@@ -131,11 +136,15 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         # После успешного редактирования возвращаем на профиль
-        return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})
+        return reverse_lazy(
+            'blog:profile',
+            kwargs={'username': self.request.user.username}
+        )
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание новой публикации."""
+
     model = Post
     form_class = PostForm
     template_name = 'blog/create.html'
@@ -181,15 +190,18 @@ class PostUpdateView(EditMixin, UpdateView):
     pk_url_kwarg = 'post_id'
     success_url = reverse_lazy('blog:index')
 
+
 class PostDeleteView(EditMixin, DeleteView):
     model = Post
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
     success_url = reverse_lazy('blog:index')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = PostForm(instance=self.object)
         return context
+
 
 @login_required
 def add_comment(request, post_id):
@@ -203,8 +215,10 @@ def add_comment(request, post_id):
 
     return redirect('blog:post_detail', post_id=post_id)
 
+
 class CommentUpdateView(LoginRequiredMixin, UpdateView):
     """Редактирование комментария."""
+
     model = Comment
     form_class = CommentForm
     template_name = 'blog/comment.html'
@@ -228,8 +242,10 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
             kwargs={'post_id': self.object.post.id}
         )
 
+
 class CommentDeleteView(EditMixin, DeleteView):
     """Удаление комментария."""
+
     model = Comment
     template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
