@@ -83,11 +83,6 @@ class Post(PublishedModel):
         'Фото', upload_to='posts_images', blank=True
     )
 
-    @property
-    def comment_count(self):
-        """Возвращает количество комментариев к посту."""
-        return self.comments.count()
-
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'

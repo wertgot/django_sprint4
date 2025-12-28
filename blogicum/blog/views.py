@@ -11,6 +11,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import Http404
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count
 
 from blog.models import Post, Category, Comment
 from .forms import UserUpdateForm, PostForm, CommentForm
@@ -30,7 +31,9 @@ class PostsListView(ListView):
         is_published=True,
         category__is_published=True,
         pub_date__lte=timezone.now()
-    )
+    ).annotate(
+        comment_count=Count('comments')
+    ).order_by(*Post._meta.ordering)
 
 
 class PostDetailView(DetailView):
@@ -80,7 +83,9 @@ def category_posts(request, category_slug):
     ).filter(
         is_published=True,
         pub_date__lte=timezone.now()
-    )
+    ).annotate(
+        comment_count=Count('comments')
+    ).order_by(*Post._meta.ordering)
 
     paginator = Paginator(page_obj, 10)
     page_number = request.GET.get('page')
@@ -105,14 +110,22 @@ class ProfileView(DetailView):
         if current_user.is_authenticated and current_user == self.object:
             posts = Post.objects.filter(
                 author=self.object,
-            ).select_related('category', 'location', 'author')
+            ).select_related(
+                'category', 'location', 'author'
+            ).annotate(
+                comment_count=Count('comments')
+            ).order_by(*Post._meta.ordering)
         else:
             posts = Post.objects.filter(
                 author=self.object,
                 is_published=True,
                 category__is_published=True,
                 pub_date__lte=timezone.now()
-            ).select_related('category', 'location', 'author')
+            ).select_related(
+                'category', 'location', 'author'
+            ).annotate(
+                comment_count=Count('comments')
+            ).order_by(*Post._meta.ordering)
 
         # Пагинация
         paginator = Paginator(posts, 10)
