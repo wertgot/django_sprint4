@@ -20,10 +20,10 @@ User = get_user_model()
 
 
 def with_comment_count(self):
-        """Добавляет количество комментариев к каждому посту"""
-        return self.annotate(
-            comment_count=Count('comments')
-            ).order_by(*Post._meta.ordering)
+    """Добавляет количество комментариев к каждому посту"""
+    return self.annotate(
+        comment_count=Count('comments')
+    ).order_by(*Post._meta.ordering)
 
 
 class PostsListView(ListView):
