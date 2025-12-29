@@ -19,21 +19,28 @@ from .forms import UserUpdateForm, PostForm, CommentForm
 User = get_user_model()
 
 
+def with_comment_count(self):
+        """Добавляет количество комментариев к каждому посту"""
+        return self.annotate(
+            comment_count=Count('comments')
+            ).order_by(*Post._meta.ordering)
+
+
 class PostsListView(ListView):
     model = Post
     template_name = 'blog/index.html'
     paginate_by = 10
-    queryset = Post.objects.select_related(
-        'author',
-        'category',
-        'location'
-    ).filter(
-        is_published=True,
-        category__is_published=True,
-        pub_date__lte=timezone.now()
-    ).annotate(
-        comment_count=Count('comments')
-    ).order_by(*Post._meta.ordering)
+    queryset = with_comment_count(
+        Post.objects.select_related(
+            'author',
+            'category',
+            'location'
+        ).filter(
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now()
+        )
+    )
 
 
 class PostDetailView(DetailView):
@@ -76,16 +83,16 @@ def category_posts(request, category_slug):
         is_published=True
     )
 
-    page_obj = category.posts.select_related(
-        'author',
-        'category',
-        'location'
-    ).filter(
-        is_published=True,
-        pub_date__lte=timezone.now()
-    ).annotate(
-        comment_count=Count('comments')
-    ).order_by(*Post._meta.ordering)
+    page_obj = with_comment_count(
+        category.posts.select_related(
+            'author',
+            'category',
+            'location'
+        ).filter(
+            is_published=True,
+            pub_date__lte=timezone.now()
+        )
+    )
 
     paginator = Paginator(page_obj, 10)
     page_number = request.GET.get('page')
@@ -108,24 +115,24 @@ class ProfileView(DetailView):
         context = super().get_context_data(**kwargs)
         current_user = self.request.user
         if current_user.is_authenticated and current_user == self.object:
-            posts = Post.objects.filter(
-                author=self.object,
-            ).select_related(
-                'category', 'location', 'author'
-            ).annotate(
-                comment_count=Count('comments')
-            ).order_by(*Post._meta.ordering)
+            posts = with_comment_count(
+                Post.objects.filter(
+                    author=self.object,
+                ).select_related(
+                    'category', 'location', 'author'
+                )
+            )
         else:
-            posts = Post.objects.filter(
-                author=self.object,
-                is_published=True,
-                category__is_published=True,
-                pub_date__lte=timezone.now()
-            ).select_related(
-                'category', 'location', 'author'
-            ).annotate(
-                comment_count=Count('comments')
-            ).order_by(*Post._meta.ordering)
+            posts = with_comment_count(
+                Post.objects.filter(
+                    author=self.object,
+                    is_published=True,
+                    category__is_published=True,
+                    pub_date__lte=timezone.now()
+                ).select_related(
+                    'category', 'location', 'author'
+                )
+            )
 
         # Пагинация
         paginator = Paginator(posts, 10)
